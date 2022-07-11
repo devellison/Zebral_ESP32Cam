@@ -1,0 +1,3 @@
+[submodule "external\\micro-rtsp"]
+	path = external\\micro-rtsp
+	url = https://github.com/geeksville/Micro-RTSP.git
