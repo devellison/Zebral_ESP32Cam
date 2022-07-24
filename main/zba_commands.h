@@ -56,6 +56,8 @@ extern "C"
   void zba_commands_light(const char *arg, zba_cmd_stream_t *cmd_stream);
 
   void zba_commands_dir(const char *arg, zba_cmd_stream_t *cmd_stream);
+
+  void zba_commands_camera_status(const char *arg, zba_cmd_stream_t *cmd_stream);
 #ifdef __cplusplus
 }
 #endif

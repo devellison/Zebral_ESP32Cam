@@ -1,6 +1,5 @@
 ## IDF Component Manager Manifest File
 dependencies:
-  espressif/led_strip: "==1.1.0-alpha"
   espressif/esp32-camera: "==2.0.1"
   ## Required IDF version
   idf:

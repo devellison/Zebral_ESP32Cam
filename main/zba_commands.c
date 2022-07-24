@@ -44,7 +44,8 @@ static const command_entry_t command_handlers[] =
   {"stop",     zba_commands_stop,           "stop SUBSYSTEM",     "Stop a subsystem"},
 // Blinkies
   {"light",    zba_commands_light,          "light [on|off]",     "Toggles the white led (front)"},
-  {"dir",      zba_commands_dir,            "dir",                "Displays files on SD card"}
+  {"dir",      zba_commands_dir,            "dir",                "Displays files on SD card"},
+  {"cam",      zba_commands_camera_status,  "cam",                "Get camera status"}
 };
 const static int num_command_handlers = sizeof(command_handlers) / sizeof(command_entry_t);
 
@@ -408,4 +409,11 @@ void zba_commands_dir(const char *arg, zba_cmd_stream_t *cmd_stream)
   (void)arg;
   (void)cmd_stream;
   zba_sd_list_files();
+}
+
+void zba_commands_camera_status(const char *arg, zba_cmd_stream_t *cmd_stream)
+{
+  (void)arg;
+  (void)cmd_stream;
+  zba_camera_dump_status();
 }

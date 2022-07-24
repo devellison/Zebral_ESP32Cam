@@ -89,11 +89,21 @@ extern "C"
 #define PIN_MODULE_14 GPIO_NUM_1  ///< GPIO1,  U0TXD <-/
 //      GND        15
 /// -------------------------------------------------------------------
+// PIN_MODULE_2 and PIN_MODULE_3 seem available.
+//    ^ I2C?
+// PIN_MODULE_4, PIN_MODULE_5, PIN_MODULE_6 are usable if not using sd cards.
+//    ^ LEDs, and just not use the SD card except at boot before LED init?
+// PIN_MODULE_7 is the White LED ><
+// PIN_MODULE_9 gets unhappy if touched.
+// PIN_MODULE_10 is used for programming
+// PIN_MODULE_13 / PIN_MODULE_14 are RX/TX for debugging / console.
 
 // clang format-on
 
 // LEDs 
 #define PIN_LED_WHITE GPIO_NUM_4   ///< LED pin is also used for SD Card and flashes when its in use.
+
+#define PIN_LED_STRIP_DATA PIN_MODULE_3
 
 #ifdef __cplusplus
 }

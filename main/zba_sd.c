@@ -44,6 +44,7 @@ zba_err_t zba_sd_init()
   slot_config.width = 1;
 
   zba_led_light(false);
+
   ZBA_LOG("Mounting SD at %s", sd_state.root);
 
   esp_error =

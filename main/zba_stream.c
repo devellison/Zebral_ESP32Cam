@@ -9,6 +9,7 @@
 #include <sys/select.h>
 #include <sys/unistd.h>
 #include "zba_commands.h"
+#include "zba_priority.h"
 
 DEFINE_ZBA_MODULE(zba_stream);
 
@@ -58,8 +59,8 @@ zba_err_t zba_stream_init(bool init_commands)
     // Create reader task
     ZBA_LOG("Creating stream reader task");
     stream_state.exiting = false;
-    xTaskCreate(&stream_reader_task, "stream_reader_task", kStreamStackSize, &stream_state, 2,
-                &stream_state.readerTask);
+    xTaskCreate(&stream_reader_task, "stream_reader_task", kStreamStackSize, &stream_state,
+                ZBA_STREAM_PRIORITY, &stream_state.readerTask);
     break;
   }
 

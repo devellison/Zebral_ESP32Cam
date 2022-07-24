@@ -2,6 +2,7 @@
 #include <esp_http_server.h>
 #include <string.h>
 #include "zba_camera.h"
+#include "zba_priority.h"
 
 DEFINE_ZBA_MODULE(zba_web);
 
@@ -56,6 +57,8 @@ zba_err_t zba_web_init()
 {
   zba_err_t init_err      = ZBA_OK;
   httpd_config_t config   = HTTPD_DEFAULT_CONFIG();
+  config.stack_size       = 8192;
+  config.task_priority    = ZBA_HTTPD_PRIORITY;
   config.max_uri_handlers = num_uri_handlers;
   esp_err_t esp_err;
   size_t i;

@@ -10,15 +10,6 @@
 
 DEFINE_ZBA_MODULE(zba_util);
 
-size_t ZBA_MIN(size_t a, size_t b)
-{
-  return (a < b) ? a : b;
-}
-size_t ZBA_MAX(size_t a, size_t b)
-{
-  return (a > b) ? a : b;
-}
-
 zba_err_t zba_util_init()
 {
   esp_err_t esp_error;
@@ -54,10 +45,21 @@ zba_err_t zba_util_init()
   return init_error;
 }
 
-float zba_elapsed(int64_t start_time)
+float zba_elapsed_sec(int64_t start_time)
+{
+  return zba_elapsed_ms(start_time) / 1000.0;
+}
+
+float zba_elapsed_ms(int64_t start_time)
 {
   float diff = zba_now() - start_time;
-  return diff / 1000000.0;
+  return diff / 1000.0;
+}
+
+float zba_elapsed_usec(int64_t start_time)
+{
+  float diff = zba_now() - start_time;
+  return diff;
 }
 
 int64_t zba_now()

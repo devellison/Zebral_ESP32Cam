@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #include "zba_pins.h"
+#include "zba_priority.h"
 #include "zba_util.h"
 
 DEFINE_ZBA_MODULE(zba_camera);
@@ -21,19 +22,20 @@ typedef struct
   int64_t start;   ///< Start time of current timing seg (10 frames then restarts)
 
   int64_t frameNum;  ///< Absolute frame number since init
-
   zba_resolution_t resolution;
+  sensor_t* camera_sensor;  ///< Camera sensor
 } zba_camera_t;
 
 /// Static camera state
-static zba_camera_t camera_state = {.stackSize   = 8192,
-                                    .capturing   = false,
-                                    .captureTask = NULL,
-                                    .frameCount  = 0,
-                                    .accumSize   = 0,
-                                    .start       = 0,
-                                    .frameNum    = 0,
-                                    .resolution  = ZBA_VGA};
+static zba_camera_t camera_state = {.stackSize     = 8192,
+                                    .capturing     = false,
+                                    .captureTask   = NULL,
+                                    .frameCount    = 0,
+                                    .accumSize     = 0,
+                                    .start         = 0,
+                                    .frameNum      = 0,
+                                    .resolution    = ZBA_VGA,
+                                    .camera_sensor = NULL};
 
 zba_err_t zba_camera_init()
 {
@@ -130,8 +132,73 @@ zba_err_t zba_camera_init()
     init_err = ZBA_CAM_INIT_FAILED;
   }
 
+  camera_state.camera_sensor = esp_camera_sensor_get();
+  if (NULL == camera_state.camera_sensor)
+  {
+    ZBA_ERR("Couldn't get sensor!");
+    init_err = ZBA_CAM_INIT_FAILED;
+    zba_camera_deinit();
+  }
+
   ZBA_MODULE_INITIALIZED(zba_camera) = init_err;
   return init_err;
+}
+
+zba_err_t zba_camera_set_status_default()
+{
+  return ZBA_OK;
+}
+
+zba_err_t zba_camera_dump_status()
+{
+  camera_status_t* s;
+  if (!camera_state.camera_sensor)
+  {
+    return ZBA_CAM_ERROR;
+  }
+  s = &camera_state.camera_sensor->status;
+
+  ZBA_LOG("scale: %d binning: %d", s->scale, s->binning);
+  ZBA_LOG("quality: %d bright: %d contrast: %d saturation: %d", s->quality, s->brightness,
+          s->contrast, s->saturation);
+  ZBA_LOG("sharpness: %d denoise: %d special effect: %d wb_mode: %d", s->sharpness, s->denoise,
+          s->special_effect, s->wb_mode);
+  ZBA_LOG("awb: %d awb_gain: %d aec: %d aec2: %d ae_level: %d aec_value: %d", s->awb, s->awb_gain,
+          s->aec, s->aec2, s->ae_level, s->aec_value);
+  ZBA_LOG("agc: %d agc_gain: %d gainceiling: %d bpc: %d wpc: %d raw_gma: %d lenc:%d", s->agc,
+          s->agc_gain, s->gainceiling, s->bpc, s->wpc, s->raw_gma, s->lenc);
+  ZBA_LOG("hmirror: %d vflip: %d dcw: %d colorbar: %d", s->hmirror, s->vflip, s->dcw, s->colorbar);
+  /*
+    bool scale;
+    bool binning;
+    uint8_t quality;//0 - 63
+    int8_t brightness;//-2 - 2
+    int8_t contrast;//-2 - 2
+    int8_t saturation;//-2 - 2
+    int8_t sharpness;//-2 - 2
+    uint8_t denoise;
+    uint8_t special_effect;//0 - 6
+    uint8_t wb_mode;//0 - 4
+    uint8_t awb;
+    uint8_t awb_gain;
+    uint8_t aec;
+    uint8_t aec2;
+    int8_t ae_level;//-2 - 2
+    uint16_t aec_value;//0 - 1200
+    uint8_t agc;
+    uint8_t agc_gain;//0 - 30
+    uint8_t gainceiling;//0 - 6
+    uint8_t bpc;
+    uint8_t wpc;
+    uint8_t raw_gma;
+    uint8_t lenc;
+    uint8_t hmirror;
+    uint8_t vflip;
+    uint8_t dcw;
+    uint8_t colorbar;
+*/
+
+  return ZBA_OK;
 }
 
 zba_err_t zba_camera_deinit()
@@ -140,6 +207,9 @@ zba_err_t zba_camera_deinit()
   zba_err_t deinit_error = ZBA_OK;
 
   zba_camera_capture_stop();
+
+  camera_state.camera_sensor = NULL;
+
   esp_err = esp_camera_deinit();
   if (ESP_OK != esp_err)
   {
@@ -175,7 +245,7 @@ camera_fb_t* zba_camera_capture_frame()
   camera_state.frameCount++;
   camera_state.frameNum++;
 
-  float elapsed = zba_elapsed(camera_state.start);
+  float elapsed = zba_elapsed_sec(camera_state.start);
   if (elapsed >= 10.0)
   {
     ZBA_LOG("%d frames in %f seconds = %f fps. Avg %d bytes per frame. %dx%d",
@@ -227,8 +297,8 @@ void zba_camera_capture_start()
   }
 
   camera_state.capturing = true;
-  xTaskCreate(zba_camera_capture_task, "CameraCapture", camera_state.stackSize, NULL, 1,
-              &camera_state.captureTask);
+  xTaskCreate(zba_camera_capture_task, "CameraCapture", camera_state.stackSize, NULL,
+              ZBA_CAMERA_LOC_CAP_PRIORITY, &camera_state.captureTask);
 }
 
 void zba_camera_capture_stop()

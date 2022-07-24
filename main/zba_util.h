@@ -2,6 +2,8 @@
 #define ZEBRAL_ESP32CAM_ZBA_UTIL_H_
 
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -14,10 +16,38 @@ extern "C"
 #endif
 
   int64_t zba_now();
-  float zba_elapsed(int64_t prev_time);
+  float zba_elapsed_sec(int64_t prev_time);
+  float zba_elapsed_ms(int64_t prev_time);
+  float zba_elapsed_usec(int64_t prev_time);
 
-  size_t ZBA_MIN(size_t a, size_t b);
-  size_t ZBA_MAX(size_t a, size_t b);
+  static __inline size_t ZBA_MIN(size_t a, size_t b)
+  {
+    return (a < b) ? a : b;
+  }
+  static __inline size_t ZBA_MAX(size_t a, size_t b)
+  {
+    return (a > b) ? a : b;
+  }
+
+  static __inline uint8_t ZBA_MAX_BYTE(uint8_t a, uint8_t b)
+  {
+    return (a > b) ? a : b;
+  }
+
+  static __inline uint8_t ZBA_MAX_BYTE3(uint8_t a, uint8_t b, uint8_t c)
+  {
+    return ZBA_MAX_BYTE(ZBA_MAX_BYTE(a, b), c);
+  }
+
+  static __inline uint8_t ZBA_MIN_BYTE(uint8_t a, uint8_t b)
+  {
+    return (a < b) ? a : b;
+  }
+
+  static __inline uint8_t ZBA_MIN_BYTE3(uint8_t a, uint8_t b, uint8_t c)
+  {
+    return ZBA_MIN_BYTE(ZBA_MIN_BYTE(a, b), c);
+  }
 
   /// Log flags
   typedef enum zba_log_flags

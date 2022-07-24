@@ -46,6 +46,9 @@ extern "C"
   /// (this will mostly be used for imaging on the chip)
   void zba_camera_capture_stop();
 
+  zba_err_t zba_camera_set_status_default();
+  zba_err_t zba_camera_dump_status();
+
 #ifdef __cplusplus
 }
 #endif
