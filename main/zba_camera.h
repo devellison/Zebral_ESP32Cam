@@ -11,23 +11,35 @@ extern "C"
 
   typedef enum zba_resolution
   {
-    // Experimental, and report overflows when there shouldn't be in jpeg mode.
-    // Trying in RGB modes.
-    ZBA_QVGA_INTERNAL,  // 320x240
-    ZBA_QCIF_INTERNAL,  // 176x144   PIXFORMAT_RGB444;
+    // Trying in less lossy modes...
+    ZBA_96x96_INTERNAL,  // 96x96
+    ZBA_QVGA_INTERNAL,   // 320x240
+    ZBA_QCIF_INTERNAL,   // 176x144
+    ZBA_VGA_INTERNAL,    // 640x480
+    ZBA_SVGA_INTERNAL,   // 800x600
+
+    // Haven't had it work well yet above SVGA in RGB565,
+    // and grayscale wasn't working for me either.
 
     // This don't seem to work in JPEG
     // {TODO} troubleshoot this...
-    // ZBA_QVGA,           // 320x240   JPEG
-    // ZBA_QCIF,           // 176x144   JPEG
+    // AH! when it allocates the frame size, it's doing RAW/5 in camera_hal.c.
+    // For better quality images, that simply isn't true, esp. at small sizes.
+    // So use worse quality, or change the /5 to something else closer to reality
+    ZBA_96x96,
+    ZBA_QVGA,  // 320x240   JPEG
+    ZBA_QCIF,  // 176x144   JPEG
 
     // These just work...
-    ZBA_VGA,   // 640x480   JPEG   @ 25fps
-    ZBA_SVGA,  // 800x600   JPEG   @ 25 fps
-    ZBA_HD,    // 1280x720  JPEG   @ 12 fps
-    ZBA_SXGA,  // 1280x1024 JPEG   @ 10 fps
-    ZBA_UXGA   // 1600x1200 JPEG   @ 12 fps
+    ZBA_VGA,   // 640x480   JPEG
+    ZBA_SVGA,  // 800x600   JPEG
+    ZBA_HD,    // 1280x720  JPEG
+    ZBA_SXGA,  // 1280x1024 JPEG
+    ZBA_UXGA   // 1600x1200 JPEG
   } zba_resolution_t;
+
+  zba_err_t zba_camera_set_res(zba_resolution_t res);
+  zba_resolution_t zba_camera_get_res();
 
   /// Resolution as defined above
   zba_err_t zba_camera_init();
@@ -37,6 +49,11 @@ extern "C"
 
   camera_fb_t* zba_camera_capture_frame();
   void zba_camera_release_frame(camera_fb_t* frame);
+
+  typedef camera_fb_t* (*zba_camera_frame_callback_t)(camera_fb_t* frame, void* context);
+
+  /// Sets a callback that's called with the frame prior to returning from zba_camera_capture_frame.
+  void zba_camera_set_on_frame(zba_camera_frame_callback_t callback, void* context);
 
   /// INTERNAL Start capturing frames
   /// (this will mostly be used for imaging on the chip)

@@ -35,6 +35,9 @@ zba_err_t zba_sd_init()
   zba_err_t result    = ZBA_OK;
   esp_err_t esp_error = ESP_OK;
 
+  zba_pin_mode(PIN_MODULE_3, PIN_MODE_DIGITAL_IN_PULLUP);
+  zba_pin_mode(PIN_MODULE_2, PIN_MODE_DIGITAL_IN_PULLUP);
+
   esp_vfs_fat_sdmmc_mount_config_t mount_config = {
       .format_if_mount_failed = true, .max_files = 6, .allocation_unit_size = 16 * 1024};
   sdmmc_host_t host               = SDMMC_HOST_DEFAULT();
@@ -78,6 +81,7 @@ zba_err_t zba_sd_init()
 zba_err_t zba_sd_deinit()
 {
   zba_err_t deinit_error = ZBA_OK;
+  bool light_off         = false;
   if (sd_state.active)
   {
     // {TODO} Unfortunately this doesn't fully de-init.
@@ -90,11 +94,20 @@ zba_err_t zba_sd_deinit()
     esp_vfs_fat_sdcard_unmount(sd_state.root, sd_state.card);
     sdmmc_host_deinit();
     sd_state.active = false;
-    zba_led_light(false);
+    light_off       = true;
+    // Check if these fix the programming issues after using an SD
+    zba_pin_mode(PIN_MODULE_3, PIN_MODE_DIGITAL_IN_PULLUP);
+    zba_pin_mode(PIN_MODULE_2, PIN_MODE_DIGITAL_IN_PULLUP);
   }
 
   ZBA_MODULE_INITIALIZED(zba_sd) =
       (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
+
+  if (light_off)
+  {
+    zba_led_light(false);
+  }
+
   return deinit_error;
 }
 

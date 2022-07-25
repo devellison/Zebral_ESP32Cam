@@ -20,6 +20,15 @@ extern "C"
   float zba_elapsed_ms(int64_t prev_time);
   float zba_elapsed_usec(int64_t prev_time);
 
+  static int32_t __inline ZBA_CLAMP(int32_t min, int32_t max, int32_t val)
+  {
+    if (val < min) return min;
+    if (val > max) return max;
+    return val;
+  }
+
+  /// Min/max. Ugh. Templates are nice sometimes.
+  /// Macros would work, but dislike possible side effects.
   static __inline size_t ZBA_MIN(size_t a, size_t b)
   {
     return (a < b) ? a : b;
@@ -29,14 +38,18 @@ extern "C"
     return (a > b) ? a : b;
   }
 
-  static __inline uint8_t ZBA_MAX_BYTE(uint8_t a, uint8_t b)
+  static __inline float ZBA_MAX_FLOAT(float a, float b)
   {
     return (a > b) ? a : b;
   }
-
-  static __inline uint8_t ZBA_MAX_BYTE3(uint8_t a, uint8_t b, uint8_t c)
+  static __inline float ZBA_MIN_FLOAT(float a, float b)
   {
-    return ZBA_MAX_BYTE(ZBA_MAX_BYTE(a, b), c);
+    return (a < b) ? a : b;
+  }
+
+  static __inline uint8_t ZBA_MAX_BYTE(uint8_t a, uint8_t b)
+  {
+    return (a > b) ? a : b;
   }
 
   static __inline uint8_t ZBA_MIN_BYTE(uint8_t a, uint8_t b)
@@ -44,9 +57,23 @@ extern "C"
     return (a < b) ? a : b;
   }
 
+  static __inline uint8_t ZBA_MAX_BYTE3(uint8_t a, uint8_t b, uint8_t c)
+  {
+    return ZBA_MAX_BYTE(ZBA_MAX_BYTE(a, b), c);
+  }
+
   static __inline uint8_t ZBA_MIN_BYTE3(uint8_t a, uint8_t b, uint8_t c)
   {
     return ZBA_MIN_BYTE(ZBA_MIN_BYTE(a, b), c);
+  }
+
+  static __inline float ZBA_MAX_FLOAT3(float a, float b, float c)
+  {
+    return ZBA_MAX_FLOAT(ZBA_MAX_FLOAT(a, b), c);
+  }
+  static __inline float ZBA_MIN_FLOAT3(float a, float b, float c)
+  {
+    return ZBA_MIN_FLOAT(ZBA_MIN_FLOAT(a, b), c);
   }
 
   /// Log flags

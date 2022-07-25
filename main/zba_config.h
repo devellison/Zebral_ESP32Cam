@@ -11,11 +11,12 @@ extern "C"
   DECLARE_ZBA_MODULE(zba_config);
 /// {TODO} switch to encrypted NVRAM, and/or just store a hash of the
 /// device password.
-
+#define kAdminUser "admin"
 /// By default, wait for 60 seconds before failing to connect.
 #define kWifiTimeoutSeconds 30
 #define kMaxSSIDLen         32
 #define kMaxPasswordLen     64
+#define kMaxUserLen         32
 #define kSerialBufferLength 255
 
   /// Init the global config
@@ -53,8 +54,6 @@ extern "C"
   /// Set the device password
   zba_err_t zba_config_set_device_pwd(const char *wifi_pwd);
 
-  /// {TODO} Need to add a more serious system, but better than nothing.
-  zba_err_t zba_config_check_auth(const char *uname, const char *pwd);
 #ifdef __cplusplus
 }
 #endif

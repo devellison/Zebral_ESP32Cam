@@ -347,39 +347,3 @@ zba_err_t zba_config_set_device_pwd(const char *device_pwd)
   ZBA_UNLOCK(config_state.configMutex);
   return ZBA_OK;
 }
-
-zba_err_t zba_config_check_auth(const char *uname, const char *pwd)
-{
-  if ((!config_state.configMutex) || (!config_state.nvsHandle))
-  {
-    ZBA_ERR("Config not initialized.");
-    return ZBA_CONFIG_NOT_INITIALIZED;
-  }
-
-  if (uname != NULL)
-  {
-    ZBA_LOG("There can be only one! (right now).");
-  }
-
-  // If we're not configured, allow access.
-  if (config_state.config.device_pwd[0] == 0)
-  {
-    ZBA_LOG("No password set. Please set a password now.");
-    return ZBA_OK;
-  }
-
-  if (!pwd)
-  {
-    ZBA_LOG("No password given.");
-    return ZBA_CONFIG_NOT_AUTHED;
-  }
-
-  if (0 == strcmp(pwd, config_state.config.device_pwd))
-  {
-    ZBA_LOG("Authenticated");
-    return ZBA_OK;
-  }
-
-  ZBA_LOG("Authentication failed.");
-  return ZBA_CONFIG_NOT_AUTHED;
-}

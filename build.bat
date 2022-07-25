@@ -1,6 +1,6 @@
 @echo off
 SET ERROR=1
-SET PORT=COM3
+SET PORT=COM4
 IF NOT "%1" == "" (
      SET PORT=%1
 )

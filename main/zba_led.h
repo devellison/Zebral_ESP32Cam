@@ -24,9 +24,9 @@ extern "C"
   /// The different types of LEDs we have right now
   typedef enum zba_led_type
   {
-    LED_WS8212_RGB,   ///< 3 pixels per LED - R, G, B
-    LED_WS8212_RGBW,  ///< 4 pixels per LED - R, G, B, W
-    LED_WS8212_UV3,   ///< 3 pixels per LED, all UV.
+    LED_STRIP_RGB,   ///< 3 pixels per LED - R, G, B
+    LED_STRIP_RGBW,  ///< 4 pixels per LED - R, G, B, W
+    LED_STRIP_UV3,   ///< 3 pixels per LED, all UV.
   } zba_led_type_t;
 
   int pixels_per_led(zba_led_type_t led_type);
@@ -51,7 +51,7 @@ extern "C"
   /// Alternatively, you can set an animator call up that gets called every cycle. Animators
   /// can write directly to data_buf, either generating their own pixels or using data as a basis
   /// for animation.
-  typedef struct zba_ws8212_led_segment
+  typedef struct zba_led_seg
   {
     // these must be set for each strip sent to zba_led_strip_init
     const char* name;         ///< Name of the strip
@@ -65,11 +65,14 @@ extern "C"
     uint8_t* data;             ///< Use this to draw normally outside of the refresh task.
                                ///< When done, call flip() to display it.
     uint8_t* data_buf;         ///< Use this to draw if in an animator/within the update task.
-  } zba_ws8212_led_segment_t;
+  } zba_led_seg_t;
+
+  /// Used to set config when we want init to be separate
+  zba_err_t zba_led_strip_cfg(zba_led_seg_t* strips, size_t strip_count);
 
   /// Initializes the LED strip
   /// Note: does not make a copy of strips and expects it to be static or stay around!
-  zba_err_t zba_led_strip_init(zba_ws8212_led_segment_t* strips, size_t strip_count);
+  zba_err_t zba_led_strip_init(zba_led_seg_t* strips, size_t strip_count);
 
   /// Deinitializes the strip
   zba_err_t zba_led_strip_deinit();
@@ -92,7 +95,7 @@ extern "C"
                                   uint8_t* r, uint8_t* g, uint8_t* b, uint8_t* w);
 
   // Retrieve an initialized segment by name. If null, gets the first one.
-  zba_ws8212_led_segment_t* zba_led_strip_get_segment(const char* seg_name);
+  zba_led_seg_t* zba_led_strip_get_segment(const char* seg_name);
 
   // Retrieve number of segments.
   size_t zba_led_strip_get_num_segments();
@@ -101,7 +104,7 @@ extern "C"
   zba_err_t zba_led_strip_flip();
 
   /// Animator callback definition
-  typedef bool (*ZBA_LED_ANIMATOR_CB)(zba_ws8212_led_segment_t* segment);
+  typedef bool (*ZBA_LED_ANIMATOR_CB)(zba_led_seg_t* segment);
 
   /// Set an animator callback - it'll be called by the refresh task prior to refresh
   /// Animators should use the data_buf member of the segment directly to modify pixels.
@@ -142,17 +145,15 @@ extern "C"
     uint8_t b;
   } GRBPixel_t;
 
-  // fast byte version of rgb->hsv. Ignores white. Not accurate, but good enough for LED strips.
-  HSVPixel_t rgbw2hsv_255(GRBWPixel_t rgbw);
-
-  // fast byte version of hsv->rgb. Ignores white. Not accurate, but good enough for LED strips.
-  GRBWPixel_t hsv2rgbw_255(HSVPixel_t hsv);
+  // Hue is 0-180, like OpenCV's.
+  HSVPixel_t rgbw2hsv(GRBWPixel_t rgbw);
+  GRBWPixel_t hsv2rgbw(HSVPixel_t hsv);
 
   // Cycles the hue on whatever's been put in memory
-  bool zba_hue_cycle_animator(zba_ws8212_led_segment_t* segment);
+  bool zba_hue_cycle_animator(zba_led_seg_t* segment);
 
   // Chases with whatever's been put in memory
-  bool zba_chase_animator(zba_ws8212_led_segment_t* segment);
+  bool zba_chase_animator(zba_led_seg_t* segment);
 
 #ifdef __cplusplus
 }

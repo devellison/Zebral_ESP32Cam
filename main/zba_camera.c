@@ -23,7 +23,10 @@ typedef struct
 
   int64_t frameNum;  ///< Absolute frame number since init
   zba_resolution_t resolution;
-  sensor_t* camera_sensor;  ///< Camera sensor
+  sensor_t* camera_sensor;               ///< Camera sensor
+  zba_camera_frame_callback_t callback;  ///< image processing callback
+  void* context;
+  camera_fb_t* process_frame;
 } zba_camera_t;
 
 /// Static camera state
@@ -34,8 +37,21 @@ static zba_camera_t camera_state = {.stackSize     = 8192,
                                     .accumSize     = 0,
                                     .start         = 0,
                                     .frameNum      = 0,
-                                    .resolution    = ZBA_VGA,
-                                    .camera_sensor = NULL};
+                                    .resolution    = ZBA_SVGA,
+                                    .camera_sensor = NULL,
+                                    .callback      = NULL,
+                                    .context       = NULL,
+                                    .process_frame = NULL};
+
+zba_err_t zba_camera_set_res(zba_resolution_t res)
+{
+  camera_state.resolution = res;
+  return ZBA_OK;
+}
+zba_resolution_t zba_camera_get_res()
+{
+  return camera_state.resolution;
+}
 
 zba_err_t zba_camera_init()
 {
@@ -47,55 +63,88 @@ zba_err_t zba_camera_init()
   int frameSize                 = FRAMESIZE_SVGA;
   pixformat_t format            = PIXFORMAT_JPEG;
   int quality                   = 4;
-  int bufferCount               = 2;
-  camera_grab_mode_t grabMode   = CAMERA_GRAB_LATEST;
+  int bufferCount               = 2;  // 2;
+  camera_grab_mode_t grabMode   = CAMERA_GRAB_WHEN_EMPTY;
   camera_fb_location_t location = CAMERA_FB_IN_PSRAM;
 
   // I've set the jpeg qualities to the best/ that I could get to work
   // reliably.
   switch (res)
   {
-    case ZBA_QVGA_INTERNAL:
-      frameSize   = FRAMESIZE_QCIF;
+    case ZBA_96x96_INTERNAL:
+      frameSize   = FRAMESIZE_96X96;
       format      = PIXFORMAT_RGB565;
       grabMode    = CAMERA_GRAB_WHEN_EMPTY;
       bufferCount = 1;
       location    = CAMERA_FB_IN_DRAM;
       break;
     case ZBA_QCIF_INTERNAL:
-      // 112 frames in 10.075424 seconds = 11.116158 fps. Avg 50688 bytes per frame. 176x144
-      // Might be useful for on-board image processing.
       frameSize   = FRAMESIZE_QCIF;
       format      = PIXFORMAT_RGB565;
       grabMode    = CAMERA_GRAB_WHEN_EMPTY;
       bufferCount = 1;
       location    = CAMERA_FB_IN_DRAM;
       break;
+    case ZBA_QVGA_INTERNAL:
+      frameSize   = FRAMESIZE_QVGA;
+      format      = PIXFORMAT_RGB565;
+      grabMode    = CAMERA_GRAB_WHEN_EMPTY;
+      bufferCount = 1;
+      location    = CAMERA_FB_IN_PSRAM;
+      break;
+    case ZBA_VGA_INTERNAL:
+      frameSize   = FRAMESIZE_VGA;
+      format      = PIXFORMAT_RGB565;
+      grabMode    = CAMERA_GRAB_WHEN_EMPTY;
+      bufferCount = 1;
+      location    = CAMERA_FB_IN_PSRAM;
+      break;
+    case ZBA_SVGA_INTERNAL:
+      frameSize   = FRAMESIZE_SVGA;
+      format      = PIXFORMAT_RGB565;
+      grabMode    = CAMERA_GRAB_WHEN_EMPTY;
+      bufferCount = 1;
+      location    = CAMERA_FB_IN_PSRAM;
+      break;
+
+    // Tiny modes need worse quality until
+    // bug is fixed for frame buffer size allocation
+    // in cam_hal - it just does full frame / 5, which
+    // is...
+    case ZBA_96x96:
+      frameSize = FRAMESIZE_96X96;
+      quality   = 14;
+      break;
+
+    case ZBA_QVGA:
+      frameSize = FRAMESIZE_QVGA;
+      quality   = 12;
+      break;
+    case ZBA_QCIF:
+      frameSize = FRAMESIZE_QCIF;
+      quality   = 12;
+      break;
+
     case ZBA_VGA:
-      // 251 frames in 10.035354 seconds = 25.011576 fps. Avg 56162 bytes per frame. 640x480
       frameSize = FRAMESIZE_VGA;
       quality   = 3;
       break;
     default:
     case ZBA_SVGA:
-      // 250 frames in 10.035060 seconds = 24.912657 fps. Avg 86643 bytes per frame. 800x600
       frameSize = FRAMESIZE_SVGA;
       quality   = 3;
       break;
     case ZBA_HD:
-      // 128 frames in 10.078775 seconds = 12.699956 fps. Avg 128282 bytes per frame. 1280x720
       frameSize = FRAMESIZE_HD;
       quality   = 4;
       break;
     case ZBA_SXGA:
-      // 110 frames in 10.073824 seconds = 10.919389 fps. Avg 200507 bytes per frame. 1280x1024
       frameSize = FRAMESIZE_SXGA;
       quality   = 5;
       break;
     case ZBA_UXGA:
-      // 125 frames in 10.074371 seconds = 12.407722 fps. Avg 185072 bytes per frame. 1600x1200
       frameSize = FRAMESIZE_UXGA;
-      quality   = 7;
+      quality   = 8;
       break;
   }
 
@@ -241,6 +290,21 @@ camera_fb_t* zba_camera_capture_frame()
     return frame;
   }
 
+  camera_state.process_frame = NULL;
+  if (camera_state.callback)
+  {
+    camera_state.process_frame = camera_state.callback(frame, camera_state.context);
+  }
+
+  if (camera_state.process_frame)
+  {
+    // Vision can return an alternative buffer - if it does,
+    // then use our local process buffer instead and free
+    // the camera driver frame now.
+    esp_camera_fb_return(frame);
+    frame = camera_state.process_frame;
+  }
+
   camera_state.accumSize += frame->len;
   camera_state.frameCount++;
   camera_state.frameNum++;
@@ -266,12 +330,17 @@ void zba_camera_release_frame(camera_fb_t* frame)
 {
   if (frame)
   {
-    esp_camera_fb_return(frame);
+    // Don't free our internal process buffers!
+    if (frame != camera_state.process_frame)
+    {
+      esp_camera_fb_return(frame);
+    }
   }
 }
 
 void zba_camera_capture_task()
 {
+  ZBA_ERR("Camera Task running!");
   camera_fb_t* frame = NULL;
   while (camera_state.capturing)
   {
@@ -282,20 +351,28 @@ void zba_camera_capture_task()
       vTaskDelay(5);
       continue;
     }
-
+    // Callback on frame is in the zba_camera_capture_frame() function itself,
+    // so that it can happen in a capture task OR inline with other things
+    // like web
     zba_camera_release_frame(frame);
   }
 
   vTaskDelete(camera_state.captureTask);
 }
 
+void zba_camera_set_on_frame(zba_camera_frame_callback_t callback, void* context)
+{
+  camera_state.callback = callback;
+  camera_state.context  = context;
+}
+
 void zba_camera_capture_start()
 {
   if (camera_state.capturing)
   {
+    ZBA_ERR("Camera already capturing!");
     return;
   }
-
   camera_state.capturing = true;
   xTaskCreate(zba_camera_capture_task, "CameraCapture", camera_state.stackSize, NULL,
               ZBA_CAMERA_LOC_CAP_PRIORITY, &camera_state.captureTask);
@@ -307,9 +384,12 @@ void zba_camera_capture_stop()
   {
     return;
   }
-  camera_state.capturing = false;
   while (eTaskGetState(camera_state.captureTask) != eDeleted)
   {
     vTaskDelay(50 / portTICK_PERIOD_MS);
   }
+  camera_state.captureTask = NULL;
+  camera_state.callback    = NULL;
+  camera_state.capturing   = false;
+  camera_state.context     = NULL;
 }

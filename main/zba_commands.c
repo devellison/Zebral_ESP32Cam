@@ -1,12 +1,14 @@
 #include "zba_commands.h"
 #include <esp_system.h>
 #include <memory.h>
+#include "zba_auth.h"
 #include "zba_camera.h"
 #include "zba_config.h"
 #include "zba_led.h"
 #include "zba_sd.h"
 #include "zba_stream.h"
 #include "zba_util.h"
+#include "zba_vision.h"
 #include "zba_web.h"
 #include "zba_wifi.h"
 
@@ -45,7 +47,8 @@ static const command_entry_t command_handlers[] =
 // Blinkies
   {"light",    zba_commands_light,          "light [on|off]",     "Toggles the white led (front)"},
   {"dir",      zba_commands_dir,            "dir",                "Displays files on SD card"},
-  {"cam",      zba_commands_camera_status,  "cam",                "Get camera status"}
+  {"cam",      zba_commands_camera_status,  "cam",                "Get camera status"},
+  {"res",      zba_commands_camera_res,     "res",                "Set camera res (VGA,SVGA,HD,SXGA,UXGA)"}
 };
 const static int num_command_handlers = sizeof(command_handlers) / sizeof(command_entry_t);
 
@@ -69,7 +72,8 @@ static const zba_subsystem_entry_t zba_subsystems[] =
   DEFINE_ZBA_SUBSYSTEM_ENTRY(camera),
   DEFINE_ZBA_SUBSYSTEM_ENTRY(led),
   DEFINE_ZBA_SUBSYSTEM_ENTRY(config),
-  DEFINE_ZBA_SUBSYSTEM_ENTRY(sd)
+  DEFINE_ZBA_SUBSYSTEM_ENTRY(sd),
+  DEFINE_ZBA_SUBSYSTEM_ENTRY(vision)
 };
 const static int num_subsystems = sizeof(zba_subsystems) / sizeof(zba_subsystem_entry_t);
 
@@ -156,7 +160,7 @@ void zba_commands_process(const char *buffer, zba_cmd_stream_t *cmd_stream)
   ZBA_CMD_LOG("Zebral ESP32-CAM valid commands:");
   for (i = 0; i < num_handlers; ++i)
   {
-    ZBA_CMD_LOG("%24s - %s", handlers[i].usage, handlers[i].description);
+    ZBA_CMD_LOG("%-24s - %s", handlers[i].usage, handlers[i].description);
   }
 }
 
@@ -164,7 +168,7 @@ void zba_commands_login(const char *arg, zba_cmd_stream_t *cmd_stream)
 {
   if (arg[0] == 0)
   {
-    cmd_stream->authed = (ZBA_OK == zba_config_check_auth(NULL, arg));
+    cmd_stream->authed = (ZBA_OK == zba_auth_check(kAdminUser, arg));
     if (cmd_stream->authed)
     {
       ZBA_CMD_LOG("Logged in. Please set a password.");
@@ -189,7 +193,7 @@ void zba_commands_login(const char *arg, zba_cmd_stream_t *cmd_stream)
   }
   else
   {
-    cmd_stream->authed = (ZBA_OK == zba_config_check_auth(NULL, arg));
+    cmd_stream->authed = (ZBA_OK == zba_auth_check(kAdminUser, arg));
     if (cmd_stream->authed)
     {
       ZBA_CMD_LOG("Logged in.");
@@ -213,16 +217,16 @@ void zba_commands_status(const char *arg, zba_cmd_stream_t *cmd_stream)
   (void)arg;
 
   ZBA_CMD_LOG("Status:");
-  ZBA_CMD_LOG("%20s %s", "Subsystem", "Status");
+  ZBA_CMD_LOG("%-20s %s", "Subsystem", "Status");
 
   // We don't init/deinit it from here because it would kill the session, so
   // right now it's not in the subsystem list.
-  ZBA_CMD_LOG("%20s 0x%X", "*util", ZBA_MODULE_INITIALIZED(zba_util));
-  ZBA_CMD_LOG("%20s 0x%X", "*stream", ZBA_MODULE_INITIALIZED(zba_stream));
+  ZBA_CMD_LOG("%-20s 0x%X", "*util", ZBA_MODULE_INITIALIZED(zba_util));
+  ZBA_CMD_LOG("%-20s 0x%X", "*stream", ZBA_MODULE_INITIALIZED(zba_stream));
 
   for (i = 0; i < num_subsystems; ++i)
   {
-    ZBA_CMD_LOG("%20s 0x%X", zba_subsystems[i].name, *zba_subsystems[i].init_error);
+    ZBA_CMD_LOG("%-20s 0x%X", zba_subsystems[i].name, *zba_subsystems[i].init_error);
   }
 }
 
@@ -332,6 +336,7 @@ void zba_commands_start(const char *arg, zba_cmd_stream_t *cmd_stream)
         return;
       }
       ZBA_LOG("Initialized %s", arg);
+
       return;
     }
   }
@@ -416,4 +421,62 @@ void zba_commands_camera_status(const char *arg, zba_cmd_stream_t *cmd_stream)
   (void)arg;
   (void)cmd_stream;
   zba_camera_dump_status();
+}
+
+void zba_commands_camera_res(const char *arg, zba_cmd_stream_t *cmd_stream)
+{
+  zba_resolution_t res = ZBA_VGA;
+  /*
+      ZBA_VGA,  // 640x480   JPEG   @ 25fps
+       ZBA_SVGA,              // 800x600   JPEG   @ 25 fps
+       ZBA_HD,                // 1280x720  JPEG   @ 12 fps
+       ZBA_SXGA,              // 1280x1024 JPEG   @ 10 fps
+       ZBA_UXGA               // 1600x1200 JPEG   @ 12 fps
+ */
+  arg++;
+  if (0 == strcasecmp(arg, "QCIFI"))
+  {
+    res = ZBA_QCIF_INTERNAL;
+  }
+  else if (0 == strcasecmp(arg, "QVGAI"))
+  {
+    res = ZBA_QVGA_INTERNAL;
+  }
+  else if (0 == strcasecmp(arg, "VGAI"))
+  {
+    res = ZBA_VGA_INTERNAL;
+  }
+  else if (0 == strcasecmp(arg, "QVGA"))
+  {
+    res = ZBA_QVGA;
+  }
+  else if (0 == strcasecmp(arg, "QCIF"))
+  {
+    res = ZBA_QCIF;
+  }
+  else if (0 == strcasecmp(arg, "96"))
+  {
+    res = ZBA_96x96;
+  }
+  else if (0 == strcasecmp(arg, "96I"))
+  {
+    res = ZBA_96x96_INTERNAL;
+  }
+  else if (0 == strcasecmp(arg, "VGA"))
+  {
+    res = ZBA_VGA;
+  }
+  else if (0 == strcasecmp(arg, "SVGA"))
+  {
+    res = ZBA_SVGA;
+  }
+  else if (0 == strcasecmp(arg, "SXGA"))
+  {
+    res = ZBA_SXGA;
+  }
+  else if (0 == strcasecmp(arg, "UXGA"))
+  {
+    res = ZBA_UXGA;
+  }
+  zba_camera_set_res(res);
 }
