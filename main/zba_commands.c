@@ -6,6 +6,7 @@
 #include "zba_config.h"
 #include "zba_i2c.h"
 #include "zba_led.h"
+#include "zba_rtsp.h"
 #include "zba_sd.h"
 #include "zba_stream.h"
 #include "zba_util.h"
@@ -83,7 +84,8 @@ static const zba_subsystem_entry_t zba_subsystems[] =
   DEFINE_ZBA_SUBSYSTEM_ENTRY(led),
   DEFINE_ZBA_SUBSYSTEM_ENTRY(config),
   DEFINE_ZBA_SUBSYSTEM_ENTRY(sd),
-  DEFINE_ZBA_SUBSYSTEM_ENTRY(vision)
+  DEFINE_ZBA_SUBSYSTEM_ENTRY(vision),
+  DEFINE_ZBA_SUBSYSTEM_ENTRY(rtsp)
 };
 const static int num_subsystems = sizeof(zba_subsystems) / sizeof(zba_subsystem_entry_t);
 

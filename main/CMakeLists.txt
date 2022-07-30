@@ -16,4 +16,14 @@ set(ZBA_SRC
     "zba_html.c"
     "zba_i2c.c"
 )
-idf_component_register(SRCS "zba_wifi_REMOTE_1386.c" "zba_wifi_LOCAL_1386.c" "zba_util_REMOTE_1386.c" "zba_commands_LOCAL_1386.c" "zba_commands_BACKUP_1386.c" "main.c" ${ZBA_SRC} INCLUDE_DIRS ".")
+SET(MICRORTSP_DIR "${CMAKE_SOURCE_DIR}/components/Micro-RTSP/src")
+
+SET(MICRORTSP_SRC
+  "${MICRORTSP_DIR}/CRtspSession.cpp"
+  "${MICRORTSP_DIR}/CStreamer.cpp"  
+)
+
+
+
+idf_component_register(SRCS "main_LOCAL_249.c" "main_BACKUP_249.c" "main.c" ${ZBA_SRC} ${MICRORTSP_SRC} INCLUDE_DIRS "." "${MICRORTSP_DIR}")
+

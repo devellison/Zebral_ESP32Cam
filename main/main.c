@@ -9,6 +9,7 @@
 #include "zba_i2c.h"
 #include "zba_led.h"
 #include "zba_pins.h"
+#include "zba_rtsp.h"
 #include "zba_sd.h"
 #include "zba_stream.h"
 #include "zba_util.h"
@@ -50,6 +51,7 @@ void app_init()
   zba_camera_init(ZBA_SXGA);
   zba_wifi_init();
   zba_web_init();
+  zba_rtsp_init();
   // zba_vision_init();
   // SD conflicts with led and i2c.
   // zba_sd_init();
@@ -60,6 +62,7 @@ void app_deinit()
 {
   ZBA_LOG("Deininitializing System...");
   zba_vision_deinit();
+  zba_rtsp_deinit();
   zba_sd_deinit();
   zba_web_deinit();
   zba_wifi_deinit();

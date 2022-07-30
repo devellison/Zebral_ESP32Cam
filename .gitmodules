@@ -1,3 +1,6 @@
 [submodule "components/esp32-camera"]
 	path = components/esp32-camera
 	url = https://github.com/devellison/esp32-camera.git
+[submodule "components/Micro-RTSP"]
+	path = components/Micro-RTSP
+	url = https://github.com/brainrecall/Micro-RTSP.git
