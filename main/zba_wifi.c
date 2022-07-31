@@ -35,19 +35,23 @@ typedef struct
   esp_event_handler_instance_t inst_got_ip;
   esp_netif_t *netif_wifi_sta;
   bool exiting;
-
+  char ip_addr[16];
   unsigned int wifi_status;  /// Bits indicating what parts we've initialized
 } zba_wifi_t;
 
-static zba_wifi_t wifi_state = {
-    .init_mutex     = NULL,
-    .event_group    = NULL,
-    .inst_any_id    = NULL,
-    .inst_got_ip    = NULL,
-    .netif_wifi_sta = NULL,
-    .exiting        = false,
-    .wifi_status    = 0,
-};
+static zba_wifi_t wifi_state = {.init_mutex     = NULL,
+                                .event_group    = NULL,
+                                .inst_any_id    = NULL,
+                                .inst_got_ip    = NULL,
+                                .netif_wifi_sta = NULL,
+                                .exiting        = false,
+                                .wifi_status    = 0,
+                                .ip_addr        = {0}};
+
+const char *zba_wifi_get_ip_addr()
+{
+  return wifi_state.ip_addr;
+}
 
 const char *zba_wifi_get_device_name()
 {
@@ -85,12 +89,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     switch (event_id)
     {
       case WIFI_EVENT_STA_START:
-        ZBA_SET_BIT_FLAG(wifi_state.wifi_status, WIFI_STARTED);
+        ZBA_SET_BIT(wifi_state.wifi_status, WIFI_STARTED);
         esp_wifi_connect();
 
         break;
       case WIFI_EVENT_STA_STOP:
-        ZBA_UNSET_BIT_FLAG(wifi_state.wifi_status, WIFI_STARTED);
+        ZBA_UNSET_BIT(wifi_state.wifi_status, WIFI_STARTED);
         xEventGroupSetBits(wifi_state.event_group, WIFI_STOPPED_BIT);
 
         break;
@@ -103,7 +107,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         /// {TODO} add some retry and exit logic here.
         ZBA_LOG("WiFi disconnected.");
         xEventGroupSetBits(wifi_state.event_group, WIFI_DISCONNECTED_BIT);
-        ZBA_UNSET_BIT_FLAG(wifi_state.wifi_status, WIFI_CONNECTED);
+        ZBA_UNSET_BIT(wifi_state.wifi_status, WIFI_CONNECTED);
 
         if (!wifi_state.exiting)
         {
@@ -116,8 +120,9 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
   else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
   {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-    ZBA_LOG("Connected! IP: " IPSTR, IP2STR(&event->ip_info.ip));
-    ZBA_SET_BIT_FLAG(wifi_state.wifi_status, WIFI_CONNECTED);
+    snprintf(wifi_state.ip_addr, 16, IPSTR, IP2STR(&event->ip_info.ip));
+    ZBA_LOG("Connected! IP: %s", wifi_state.ip_addr);
+    ZBA_SET_BIT(wifi_state.wifi_status, WIFI_CONNECTED);
     xEventGroupSetBits(wifi_state.event_group, WIFI_CONNECTED_BIT);
   }
 }
@@ -137,7 +142,7 @@ zba_err_t zba_wifi_init()
 
   for (;;)
   {
-    if (ZBA_TEST_BIT_FLAG(wifi_state.wifi_status, WIFI_CONNECTED))
+    if (ZBA_TEST_BIT(wifi_state.wifi_status, WIFI_CONNECTED))
     {
       ZBA_LOG("Already connected to Wifi!");
       break;
@@ -154,7 +159,7 @@ zba_err_t zba_wifi_init()
       break;
     }
 
-    ZBA_SET_BIT_FLAG(wifi_state.wifi_status, NET_INITIALIZED);
+    ZBA_SET_BIT(wifi_state.wifi_status, NET_INITIALIZED);
 
     wifi_state.event_group = xEventGroupCreate();
 
@@ -164,7 +169,7 @@ zba_err_t zba_wifi_init()
       result = ZBA_WIFI_INIT_FAILED;
       break;
     }
-    ZBA_SET_BIT_FLAG(wifi_state.wifi_status, NET_LOOP_CREATED);
+    ZBA_SET_BIT(wifi_state.wifi_status, NET_LOOP_CREATED);
 
     wifi_state.netif_wifi_sta = esp_netif_create_default_wifi_sta();
 
@@ -175,7 +180,7 @@ zba_err_t zba_wifi_init()
       result = ZBA_WIFI_INIT_FAILED;
       break;
     }
-    ZBA_SET_BIT_FLAG(wifi_state.wifi_status, WIFI_INITIALIZED);
+    ZBA_SET_BIT(wifi_state.wifi_status, WIFI_INITIALIZED);
 
     // Log the device name, while also grabbing the name with the wifi initialized in case
     // we need it after de-initializing it.
@@ -234,7 +239,7 @@ zba_err_t zba_wifi_init()
       result = ZBA_WIFI_INIT_FAILED;
       break;
     }
-    ZBA_SET_BIT_FLAG(wifi_state.wifi_status, WIFI_STARTED);
+    ZBA_SET_BIT(wifi_state.wifi_status, WIFI_STARTED);
 
     // Wait for connect or failure
     // EventBits_t bits =
@@ -246,7 +251,7 @@ zba_err_t zba_wifi_init()
     break;
   }
 
-  if (!ZBA_TEST_BIT_FLAG(wifi_state.wifi_status, WIFI_CONNECTED))
+  if (!ZBA_TEST_BIT(wifi_state.wifi_status, WIFI_CONNECTED))
   {
     result = ZBA_WIFI_INIT_FAILED;
   }
@@ -257,12 +262,12 @@ zba_err_t zba_wifi_init()
   {
     ZBA_LOG("An error occurred initializing wifi - deinitializing");
     zba_wifi_deinit();
-    ZBA_MODULE_INITIALIZED(zba_wifi) = result;
+    ZBA_SET_INIT(zba_wifi, result);
     return result;
   }
 
   ZBA_LOG("Connected to %s.", wifi_config.sta.ssid);
-  ZBA_MODULE_INITIALIZED(zba_wifi) = result;
+  ZBA_SET_INIT(zba_wifi, result);
   return ZBA_OK;
 }
 
@@ -273,7 +278,7 @@ zba_err_t zba_wifi_deinit()
   ZBA_LOCK(wifi_state.init_mutex);
   wifi_state.exiting = true;
 
-  if (ZBA_TEST_BIT_FLAG(wifi_state.wifi_status, WIFI_CONNECTED))
+  if (ZBA_TEST_BIT(wifi_state.wifi_status, WIFI_CONNECTED))
   {
     esp_wifi_disconnect();
     /// Wait for disconnect
@@ -282,10 +287,10 @@ zba_err_t zba_wifi_deinit()
 
     xEventGroupClearBits(wifi_state.event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT |
                                                      WIFI_DISCONNECTED_BIT | WIFI_STOPPED_BIT);
-    ZBA_UNSET_BIT_FLAG(wifi_state.wifi_status, WIFI_CONNECTED);
+    ZBA_UNSET_BIT(wifi_state.wifi_status, WIFI_CONNECTED);
   }
 
-  if (ZBA_TEST_BIT_FLAG(wifi_state.wifi_status, WIFI_STARTED))
+  if (ZBA_TEST_BIT(wifi_state.wifi_status, WIFI_STARTED))
   {
     esp_wifi_stop();
     xEventGroupWaitBits(wifi_state.event_group, WIFI_STOPPED_BIT, pdFALSE, pdFALSE,
@@ -293,7 +298,7 @@ zba_err_t zba_wifi_deinit()
 
     xEventGroupClearBits(wifi_state.event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT |
                                                      WIFI_DISCONNECTED_BIT | WIFI_STOPPED_BIT);
-    ZBA_UNSET_BIT_FLAG(wifi_state.wifi_status, WIFI_STARTED);
+    ZBA_UNSET_BIT(wifi_state.wifi_status, WIFI_STARTED);
   }
 
   if (wifi_state.inst_any_id)
@@ -308,10 +313,10 @@ zba_err_t zba_wifi_deinit()
     wifi_state.inst_got_ip = NULL;
   }
 
-  if (ZBA_TEST_BIT_FLAG(wifi_state.wifi_status, WIFI_INITIALIZED))
+  if (ZBA_TEST_BIT(wifi_state.wifi_status, WIFI_INITIALIZED))
   {
     esp_wifi_deinit();
-    ZBA_UNSET_BIT_FLAG(wifi_state.wifi_status, WIFI_INITIALIZED);
+    ZBA_UNSET_BIT(wifi_state.wifi_status, WIFI_INITIALIZED);
   }
 
   if (wifi_state.netif_wifi_sta != NULL)
@@ -320,10 +325,10 @@ zba_err_t zba_wifi_deinit()
     wifi_state.netif_wifi_sta = NULL;
   }
 
-  if (ZBA_TEST_BIT_FLAG(wifi_state.wifi_status, NET_LOOP_CREATED))
+  if (ZBA_TEST_BIT(wifi_state.wifi_status, NET_LOOP_CREATED))
   {
     esp_event_loop_delete_default();
-    ZBA_UNSET_BIT_FLAG(wifi_state.wifi_status, NET_LOOP_CREATED);
+    ZBA_UNSET_BIT(wifi_state.wifi_status, NET_LOOP_CREATED);
   }
 
   if (wifi_state.event_group != NULL)
@@ -332,17 +337,22 @@ zba_err_t zba_wifi_deinit()
     wifi_state.event_group = NULL;
   }
 
-  if (ZBA_TEST_BIT_FLAG(wifi_state.wifi_status, NET_INITIALIZED))
+  if (ZBA_TEST_BIT(wifi_state.wifi_status, NET_INITIALIZED))
   {
     esp_netif_deinit();
-    ZBA_UNSET_BIT_FLAG(wifi_state.wifi_status, NET_INITIALIZED);
+    ZBA_UNSET_BIT(wifi_state.wifi_status, NET_INITIALIZED);
   }
 
   ZBA_LOG("WiFi deinitialized");
   ZBA_UNLOCK(wifi_state.init_mutex);
 
-  ZBA_MODULE_INITIALIZED(zba_wifi) =
-      (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
+  if (wifi_state.init_mutex)
+  {
+    vSemaphoreDelete(wifi_state.init_mutex);
+    wifi_state.init_mutex = NULL;
+  }
+
+  ZBA_SET_DEINIT(zba_wifi, deinit_error);
 
   return deinit_error;
 }

@@ -64,7 +64,7 @@ zba_err_t zba_stream_init(bool init_commands)
     break;
   }
 
-  ZBA_MODULE_INITIALIZED(zba_stream) = result;
+  ZBA_SET_INIT(zba_stream, result);
   return result;
 }
 

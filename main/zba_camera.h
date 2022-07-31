@@ -40,6 +40,8 @@ extern "C"
 
   zba_err_t zba_camera_set_res(zba_resolution_t res);
   zba_resolution_t zba_camera_get_res();
+  size_t zba_camera_get_height();
+  size_t zba_camera_get_width();
 
   /// Resolution as defined above
   zba_err_t zba_camera_init();
@@ -55,6 +57,7 @@ extern "C"
   /// Sets a callback that's called with the frame prior to returning from zba_camera_capture_frame.
   void zba_camera_set_on_frame(zba_camera_frame_callback_t callback, void* context);
 
+  bool zba_camera_need_restart();
   /// INTERNAL Start capturing frames
   /// (this will mostly be used for imaging on the chip)
   void zba_camera_capture_start();
@@ -65,6 +68,22 @@ extern "C"
 
   zba_err_t zba_camera_set_status_default();
   zba_err_t zba_camera_dump_status();
+
+  typedef struct
+  {
+    zba_resolution_t res;
+    const char* name;
+    int frameSize;
+    pixformat_t format;
+    int quality;
+    int bufferCount;
+    camera_grab_mode_t grabMode;
+    camera_fb_location_t location;
+  } zba_res_info_t;
+
+  const zba_res_info_t* zba_camera_get_res_from_name(const char* name);
+  const zba_res_info_t* zba_camera_get_resolution_info(zba_resolution_t res);
+  const char* zba_camera_get_res_name(zba_resolution_t res);
 
 #ifdef __cplusplus
 }

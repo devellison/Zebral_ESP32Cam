@@ -74,7 +74,7 @@ zba_err_t zba_sd_init()
     sd_state.active = true;
   }
 
-  ZBA_MODULE_INITIALIZED(zba_sd) = result;
+  ZBA_SET_INIT(zba_sd, result);
   return result;
 }
 
@@ -99,10 +99,7 @@ zba_err_t zba_sd_deinit()
     zba_pin_mode(PIN_MODULE_3, PIN_MODE_DIGITAL_IN_PULLUP);
     zba_pin_mode(PIN_MODULE_2, PIN_MODE_DIGITAL_IN_PULLUP);
   }
-
-  ZBA_MODULE_INITIALIZED(zba_sd) =
-      (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
-
+  ZBA_SET_DEINIT(zba_sd, deinit_error);
   if (light_off)
   {
     zba_led_light(false);

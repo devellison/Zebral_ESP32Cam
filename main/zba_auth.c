@@ -95,7 +95,7 @@ zba_err_t zba_auth_init()
 
   auth_state.basic_len += 6;  // Add header length
 
-  ZBA_MODULE_INITIALIZED(zba_config) = result;
+  ZBA_SET_INIT(zba_auth, result);
   return result;
 }
 
@@ -104,9 +104,7 @@ zba_err_t zba_auth_deinit()
   zba_err_t deinit_error = ZBA_OK;
   // ...
   memset(&auth_state, 0, sizeof(auth_state));
-  ZBA_MODULE_INITIALIZED(zba_config) =
-      (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
-
+  ZBA_SET_DEINIT(zba_auth, deinit_error);
   return deinit_error;
 }
 

@@ -172,7 +172,7 @@ zba_err_t zba_led_init()
     zba_led_deinit();
   }
 
-  ZBA_MODULE_INITIALIZED(zba_led) = init_error;
+  ZBA_SET_INIT(zba_led, init_error);
   return init_error;
 }
 
@@ -214,8 +214,7 @@ zba_err_t zba_led_deinit()
   zba_pin_mode(PIN_MODULE_3, PIN_MODE_DIGITAL_IN_PULLUP);
   zba_pin_mode(PIN_MODULE_2, PIN_MODE_DIGITAL_IN_PULLUP);
 
-  ZBA_MODULE_INITIALIZED(zba_led) =
-      (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
+  ZBA_SET_DEINIT(zba_led, deinit_error);
 
   return deinit_error;
 }
@@ -230,7 +229,7 @@ zba_err_t zba_led_light(bool on)
 
   // Right now, just set it each time. SD Module unsets it.
   zba_pin_mode(PIN_LED_WHITE, PIN_MODE_DIGITAL_OUT);
-  ZBA_SET_BIT_FLAG(led_state.onboard_leds, WHITE_INIT);
+  ZBA_SET_BIT(led_state.onboard_leds, WHITE_INIT);
 
   zba_pin_digital_write(PIN_LED_WHITE, on ? PIN_HIGH : PIN_LOW);
   return ZBA_OK;
@@ -239,7 +238,7 @@ zba_err_t zba_led_light(bool on)
 zba_err_t zba_led_light_blink()
 {
   led_state.onboard_leds ^= WHITE_ON;
-  return zba_led_light(ZBA_TEST_BIT_FLAG(led_state.onboard_leds, WHITE_ON));
+  return zba_led_light(ZBA_TEST_BIT(led_state.onboard_leds, WHITE_ON));
 }
 
 int pixels_per_led(zba_led_type_t led_type)

@@ -8,7 +8,7 @@ extern "C"
 {
 #endif
   /// FavIcon .png file
-  const uint8_t favicon_16x16[928];
+  extern const uint8_t favicon_16x16[801];
 
 #ifdef __cplusplus
 }

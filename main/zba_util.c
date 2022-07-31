@@ -41,7 +41,7 @@ zba_err_t zba_util_init()
 
   // Save module initialization state.
   // For utils, we leave it as initialized as it got (it's the base level and should always work)
-  ZBA_MODULE_INITIALIZED(zba_util) = init_error;
+  ZBA_SET_INIT(zba_util, init_error);
   return init_error;
 }
 
@@ -65,4 +65,14 @@ float zba_elapsed_usec(int64_t start_time)
 int64_t zba_now()
 {
   return esp_timer_get_time();
+}
+
+int64_t zba_now_ms()
+{
+  return esp_timer_get_time() / 1000ULL;
+}
+
+void zba_delay_ms(uint32_t ms)
+{
+  vTaskDelay(ms / portTICK_PERIOD_MS);
 }

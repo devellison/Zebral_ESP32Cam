@@ -18,6 +18,8 @@ extern "C"
   /// the factory MAC address.
   const char* zba_wifi_get_device_name();
 
+  // Retrieves a string of the ip addr
+  const char* zba_wifi_get_ip_addr();
 #ifdef __cplusplus
 }
 #endif

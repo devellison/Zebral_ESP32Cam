@@ -105,6 +105,10 @@ extern "C"
 
 #define PIN_LED_STRIP_DATA PIN_MODULE_3
 
+// I2C chain
+#define PIN_I2C_SDA PIN_MODULE_5
+#define PIN_I2C_SCL PIN_MODULE_6
+
 #ifdef __cplusplus
 }
 #endif

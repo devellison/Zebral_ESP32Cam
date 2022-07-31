@@ -1,6 +1,7 @@
 #ifndef ZEBRAL_ESP32CAM_ZBA_COMMANDS_H_
 #define ZEBRAL_ESP32CAM_ZBA_COMMANDS_H_
 
+#include <esp_http_server.h>
 #include "zba_config.h"
 #include "zba_util.h"
 
@@ -18,6 +19,12 @@ extern "C"
   } zba_cmd_stream_t;
 
   void zba_commands_status(const char *arg, zba_cmd_stream_t *cmd_stream);
+
+  /// Handle commands from the web
+  void zba_commands_process_web(const char *buffer, httpd_req_t *req);
+  void zba_commands_status_web(const char *arg, httpd_req_t *req);
+
+  void zba_commands_memory(const char *arg, zba_cmd_stream_t *cmd_stream);
 
   /// Initialize a command stream
   void zba_commands_stream_init(zba_cmd_stream_t *cmd_stream, int fd);
@@ -58,6 +65,7 @@ extern "C"
   void zba_commands_dir(const char *arg, zba_cmd_stream_t *cmd_stream);
 
   void zba_commands_camera_status(const char *arg, zba_cmd_stream_t *cmd_stream);
+
   void zba_commands_camera_res(const char *arg, zba_cmd_stream_t *cmd_stream);
 #ifdef __cplusplus
 }

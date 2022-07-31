@@ -95,7 +95,7 @@ zba_err_t zba_vision_init()
     break;
   }
 
-  ZBA_MODULE_INITIALIZED(zba_vision) = result;
+  ZBA_SET_INIT(zba_vision, result);
   return result;
 }
 
@@ -118,9 +118,7 @@ zba_err_t zba_vision_deinit()
     free(vision_state.gray_frame.buf);
     vision_state.gray_frame.buf = NULL;
   }
-
-  ZBA_MODULE_INITIALIZED(zba_vision) =
-      (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
+  ZBA_SET_DEINIT(zba_vision, deinit_error);
 
   return deinit_error;
 }

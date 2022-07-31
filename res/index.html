@@ -1,13 +1,207 @@
-<html>
+<!DOCTYPE html>
+
+<html lang="en">
 
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      background-color: rgb(48, 48, 48);
+      color: rgb(200, 200, 200);
+      margin: 0px;
+    }
+
+    a:link {
+      color: lightblue;
+      text-decoration: none;
+    }
+
+    a:visited {
+      color: lightcyan;
+      text-decoration: none;
+    }
+
+    a:hover {
+      color: lightcoral;
+      text-decoration: underline;
+    }
+
+    a:active {
+      color: lightpink;
+      text-decoration: underline;
+    }
+
+    #sidebar_div {
+      height: 100%;
+      width: 75px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background-color: rgb(60, 20, 80);
+      color: white;
+      overflow-x: hidden;
+      transition: .25s;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    #camera_div {
+      padding: 0px;
+      margin: 0px;
+      height: 100%;
+      transition-duration: .25s;
+    }
+
+    #camera_img {
+      padding: 0px;
+      margin: 0px;
+      height: 100vh;
+      width: 100%;
+      object-fit: contain;
+      image-rendering: pixelated
+    }
+
+    #logo {
+      transform-style: preserve-3d;
+      transition: transform 0.5s;
+      margin: 8px 8px;
+    }
+
+    #sidebar_ctrls {
+      text-align: center;
+
+    }
+
+    button {
+      font-size: 24px;
+      background-color: rgb(80, 60, 120);
+      color: white;
+      cursor: pointer;
+      border-radius: 24px;
+      transition-duration: .25s;
+      padding: 16px 24px;
+      margin: 8px 8px;
+    }
+
+    select {
+      font-size: 24px;
+      background-color: rgb(80, 60, 120);
+      color: white;
+      margin: 8px 8px;
+      border-radius: 24px;
+    }
+
+    .center_label {
+      text-align: center;
+    }
+
+    .color_picker {
+      text-align: center;
+      margin: 15px 15px;
+    }
+
+    button:hover {
+      background-color: rgb(60, 20, 160);
+    }
+
+    .sidebar_combo {
+      width: 80%;
+    }
+
+    .sidebar_btn {
+      width: 80%;
+    }
+  </style>
   <title>Zebral ESP32-CAM</title>
-  <link rel="ico" type="image/png" href="favicon.png" />
-  <link rel="shortcut icon" href="favicon.png" type="image/png">
+  <link rel="ico" type="image/png" sizes="16x16" href="favicon.png" />
+  <link rel="shortcut icon" href="favicon.png" type="image/png" />
 </head>
 
-<body>
-  <image src="video"></image>
+<body onload="onInitialize()">
+  <!-- Side nav bar -->
+  <div id="sidebar_div">
+    <div id="logo_div"><img id="logo" src="zebral_logo.svg" width="50" onclick="toggleNav()" /></div>
+    <div id="sidebar_ctrls">
+      <div><a href="image" download><button id="save_btn" class="sidebar_btn">Save Image</button></a></div>
+      <div><a href="https://github.com/devellison/zebral_esp32cam"><button id="github_btn"
+            class="sidebar_btn">GitHub</button></a></div>
+
+      <div>Resolution</div>
+      <div>
+        <select id="resolution" onChange="on_change_resolution();" class="sidebar_combo" name="resolution">
+          <option value="QCIF">QCIF</option>
+          <option value="QVGA">QVGA</option>
+          <option value="VGA">VGA</option>
+          <option value="SVGA">SVGA</option>
+          <option value="HD">HD</option>
+          <option value="UXGA">UXGA</option>
+        </select>
+      </div>
+    </div>
+
+  </div>
+  <!-- Camera image -->
+  <div id="camera_div">
+    <image id="camera_img" src="" />
+  </div>
+  <script>
+    var nav_shown = false;
+    var hostname = window.location.hostname
+    // We have to use a different port, as the server only handles one client at a time.
+    // But there's not an easy way to say "This host, but on another port" in a URI.
+    // So we rewrite the image URI on load.
+    function onInitialize() {
+      if (hostname) {
+        document.getElementById('camera_img').src = 'http://' + hostname + ':81/video';
+      }
+      else {
+        // For testing locally
+        document.getElementById('camera_img').src = 'sample.bmp';
+      }
+
+      document.getElementById("sidebar_ctrls").hidden = true;
+      get_resolution();
+    }
+
+    // Open/shut the side nav bar
+    function toggleNav() {
+      if (!nav_shown) {
+        document.getElementById("sidebar_div").style.width = "250px";
+        document.getElementById("camera_div").style.marginLeft = "250px";
+        document.getElementById("sidebar_ctrls").hidden = false;
+        document.getElementById("logo").style.transform = "rotateY(180deg)";
+        nav_shown = true;
+      }
+      else {
+        document.getElementById("sidebar_div").style.width = "75px";
+        document.getElementById("camera_div").style.marginLeft = "75px";
+        document.getElementById("sidebar_ctrls").hidden = true;
+        document.getElementById("logo").style.transform = "rotateY(0)";
+        nav_shown = false;
+      }
+    }
+
+    async function get_resolution() {
+      let response = await fetch("http://" + hostname + "/command?status");
+      let data = await response.json();
+      document.getElementById("resolution").value = data.resolution;
+    }
+
+    function on_change_resolution() {
+      var select = document.getElementById("resolution");
+      if (select.selectedIndex >= 0) {
+        var value = select.options[select.selectedIndex].value;
+        fetch("http://" + hostname + "/command?res=" + value, {
+          credentials: 'include'
+        });
+      }
+    }
+
+    function on_change_led() {
+
+    }
+
+  </script>
 </body>
 
 </html>
