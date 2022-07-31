@@ -172,7 +172,7 @@ zba_err_t zba_led_init()
     zba_led_deinit();
   }
 
-  ZBA_MODULE_INITIALIZED(zba_led) = init_error;
+  ZBA_SET_INIT(zba_led, init_error);
   return init_error;
 }
 
@@ -214,8 +214,7 @@ zba_err_t zba_led_deinit()
   zba_pin_mode(PIN_MODULE_3, PIN_MODE_DIGITAL_IN_PULLUP);
   zba_pin_mode(PIN_MODULE_2, PIN_MODE_DIGITAL_IN_PULLUP);
 
-  ZBA_MODULE_INITIALIZED(zba_led) =
-      (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
+  ZBA_SET_DEINIT(zba_led, deinit_error);
 
   return deinit_error;
 }
@@ -230,7 +229,7 @@ zba_err_t zba_led_light(bool on)
 
   // Right now, just set it each time. SD Module unsets it.
   zba_pin_mode(PIN_LED_WHITE, PIN_MODE_DIGITAL_OUT);
-  ZBA_SET_BIT_FLAG(led_state.onboard_leds, WHITE_INIT);
+  ZBA_SET_BIT(led_state.onboard_leds, WHITE_INIT);
 
   zba_pin_digital_write(PIN_LED_WHITE, on ? PIN_HIGH : PIN_LOW);
   return ZBA_OK;
@@ -239,7 +238,7 @@ zba_err_t zba_led_light(bool on)
 zba_err_t zba_led_light_blink()
 {
   led_state.onboard_leds ^= WHITE_ON;
-  return zba_led_light(ZBA_TEST_BIT_FLAG(led_state.onboard_leds, WHITE_ON));
+  return zba_led_light(ZBA_TEST_BIT(led_state.onboard_leds, WHITE_ON));
 }
 
 int pixels_per_led(zba_led_type_t led_type)
@@ -382,9 +381,11 @@ zba_err_t zba_led_strip_set_led(const char* seg_name, int led_index, uint8_t r, 
                                 uint8_t b, uint8_t w)
 {
   zba_led_seg_t* curStrip = NULL;
+  bool set_all            = false;
   if (seg_name == NULL)
   {
-    return ZBA_LED_INVALID;
+    // Set them all. Note that this will be slightly unpredictable for different stuffs.
+    set_all = true;
   }
 
   curStrip = led_state.led_segments;
@@ -392,7 +393,7 @@ zba_err_t zba_led_strip_set_led(const char* seg_name, int led_index, uint8_t r, 
   {
     for (size_t i = 0; i < led_state.num_led_segments; ++i)
     {
-      if (0 == strcmp(seg_name, curStrip->name))
+      if ((set_all) || (0 == strcmp(seg_name, curStrip->name)))
       {
         // found strip
         int ppl = pixels_per_led(curStrip->led_type);
@@ -419,11 +420,13 @@ zba_err_t zba_led_strip_set_led(const char* seg_name, int led_index, uint8_t r, 
           if (ppl > 2) led_state.led_memory[offset + 2] = b;
           if (ppl > 3) led_state.led_memory[offset + 3] = w;
         }
-        return ZBA_OK;
+        if (!set_all) return ZBA_OK;
       }
       curStrip++;
     }
+    if (set_all) return ZBA_OK;
   }
+
   ZBA_ERR("Invalid LED set request %s:%d", seg_name, led_index);
   return ZBA_LED_INVALID;
 }

@@ -107,7 +107,7 @@ zba_err_t zba_config_init()
     }
   }
 
-  ZBA_MODULE_INITIALIZED(zba_config) = result;
+  ZBA_SET_INIT(zba_config, result);
   return result;
 }
 
@@ -130,10 +130,7 @@ zba_err_t zba_config_deinit()
     vSemaphoreDelete(config_state.configMutex);
     config_state.configMutex = 0;
   }
-
-  ZBA_MODULE_INITIALIZED(zba_config) =
-      (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
-
+  ZBA_SET_DEINIT(zba_config, deinit_error);
   return deinit_error;
 }
 

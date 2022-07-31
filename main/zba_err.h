@@ -50,6 +50,11 @@ extern "C"
     ZBA_PINS_RESET_ERROR,
     ZBA_UTIL_ERROR = 0x8900,
     ZBA_UTIL_UART_ERROR,
+    ZBA_I2C_ERROR = 0x8a00,
+    ZBA_I2C_INIT_ERROR,
+    ZBA_I2C_DEINIT_ERROR,
+    //-----------------------
+
     //-----------------------
     ZBA_HIGHEST
   } zba_err_t;

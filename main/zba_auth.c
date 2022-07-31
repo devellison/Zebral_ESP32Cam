@@ -47,32 +47,6 @@ void zba_md5_vector(void *src, size_t len, uint8_t *out)
   esp_rom_md5_final(out, &context);
 }
 
-uint8_t zba_char_to_nibble(char ascii)
-{
-  if ((ascii >= 'A') && (ascii <= 'F'))
-  {
-    return ascii - 'A' + 10;
-  }
-  if ((ascii >= 'a') && (ascii <= 'f'))
-  {
-    return ascii - 'a' + 10;
-  }
-  if ((ascii >= '0') && (ascii <= '9'))
-  {
-    return ascii - '0';
-  }
-  ZBA_ERR("Invalid character %c (%d) in hex", ascii, (int)ascii);
-  return 0;
-}
-
-uint8_t zba_hex_to_byte(const char *asciiHex)
-{
-  uint8_t value;
-  value = zba_char_to_nibble(asciiHex[0]) << 4;
-  value |= zba_char_to_nibble(asciiHex[1]);
-  return value;
-}
-
 zba_err_t zba_auth_init()
 {
   char credentials[kMaxPasswordLen + kMaxUserLen + 2] = {0};
@@ -95,7 +69,7 @@ zba_err_t zba_auth_init()
 
   auth_state.basic_len += 6;  // Add header length
 
-  ZBA_MODULE_INITIALIZED(zba_config) = result;
+  ZBA_SET_INIT(zba_auth, result);
   return result;
 }
 
@@ -104,9 +78,7 @@ zba_err_t zba_auth_deinit()
   zba_err_t deinit_error = ZBA_OK;
   // ...
   memset(&auth_state, 0, sizeof(auth_state));
-  ZBA_MODULE_INITIALIZED(zba_config) =
-      (ZBA_OK == deinit_error) ? ZBA_MODULE_NOT_INITIALIZED : deinit_error;
-
+  ZBA_SET_DEINIT(zba_auth, deinit_error);
   return deinit_error;
 }
 

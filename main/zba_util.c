@@ -41,7 +41,7 @@ zba_err_t zba_util_init()
 
   // Save module initialization state.
   // For utils, we leave it as initialized as it got (it's the base level and should always work)
-  ZBA_MODULE_INITIALIZED(zba_util) = init_error;
+  ZBA_SET_INIT(zba_util, init_error);
   return init_error;
 }
 
@@ -65,4 +65,46 @@ float zba_elapsed_usec(int64_t start_time)
 int64_t zba_now()
 {
   return esp_timer_get_time();
+}
+
+int64_t zba_now_ms()
+{
+  return esp_timer_get_time() / 1000ULL;
+}
+
+void zba_delay_ms(uint32_t ms)
+{
+  vTaskDelay(ms / portTICK_PERIOD_MS);
+}
+
+uint8_t zba_char_to_nibble(char ascii)
+{
+  if ((ascii >= 'A') && (ascii <= 'F'))
+  {
+    return ascii - 'A' + 10;
+  }
+  if ((ascii >= 'a') && (ascii <= 'f'))
+  {
+    return ascii - 'a' + 10;
+  }
+  if ((ascii >= '0') && (ascii <= '9'))
+  {
+    return ascii - '0';
+  }
+  ZBA_ERR("Invalid character %c (%d) in hex", ascii, (int)ascii);
+  return 0;
+}
+
+uint8_t zba_hex_to_byte(const char *asciiHex)
+{
+  if ((!asciiHex) || (asciiHex[0] == 0) || (asciiHex[1] == 0))
+  {
+    ZBA_ERR("Invalid ascii hex byte.");
+    return 0;
+  }
+
+  uint8_t value;
+  value = zba_char_to_nibble(asciiHex[0]) << 4;
+  value |= zba_char_to_nibble(asciiHex[1]);
+  return value;
 }

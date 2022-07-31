@@ -6,6 +6,7 @@
 #include "zba_camera.h"
 #include "zba_commands.h"
 #include "zba_config.h"
+#include "zba_i2c.h"
 #include "zba_led.h"
 #include "zba_pins.h"
 #include "zba_sd.h"
@@ -42,15 +43,15 @@ void app_init()
   ZBA_LOG("Initializing System...");
   zba_led_strip_cfg(kTestLEDConfig, sizeof(kTestLEDConfig) / sizeof(zba_led_seg_t));
   zba_led_init();
+  zba_i2c_init();
   zba_config_init();
   zba_auth_init();
   zba_stream_init(true);
   zba_camera_init(ZBA_SXGA);
   zba_wifi_init();
   zba_web_init();
-  zba_vision_init();
-  // Skip this. LED and SD conflict, and once SD has been used
-  // you also can't program until the SD is removed.
+  // zba_vision_init();
+  // SD conflicts with led and i2c.
   // zba_sd_init();
   ZBA_LOG("System Initialized.");
 }
@@ -66,6 +67,7 @@ void app_deinit()
   zba_stream_deinit();
   zba_auth_deinit();
   zba_config_deinit();
+  zba_i2c_deinit();
   zba_led_deinit();
   ZBA_LOG("System Deinitialized.");
 }
