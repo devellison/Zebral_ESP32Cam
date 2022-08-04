@@ -15,6 +15,7 @@ set(ZBA_SRC
     "zba_imgproc.c"
     "zba_html.c"
     "zba_i2c.c"
+    "zba_rtsp.cpp"
 )
 SET(MICRORTSP_DIR "${CMAKE_SOURCE_DIR}/components/Micro-RTSP/src")
 
@@ -25,5 +26,5 @@ SET(MICRORTSP_SRC
 
 
 
-idf_component_register(SRCS "main_LOCAL_249.c" "main_BACKUP_249.c" "main.c" ${ZBA_SRC} ${MICRORTSP_SRC} INCLUDE_DIRS "." "${MICRORTSP_DIR}")
+idf_component_register(SRCS "main.c" ${ZBA_SRC} ${MICRORTSP_SRC} INCLUDE_DIRS "." "${MICRORTSP_DIR}")
 

@@ -68,6 +68,7 @@ zba_err_t zba_camera_set_autoexposure(bool on)
 
   camera_state.camera_sensor->set_gain_ctrl(camera_state.camera_sensor, on ? 1 : 0);
   camera_state.camera_sensor->set_exposure_ctrl(camera_state.camera_sensor, on ? 1 : 0);
+  return ZBA_OK;
 }
 
 zba_resolution_t zba_camera_get_res()
