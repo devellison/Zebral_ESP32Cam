@@ -57,6 +57,19 @@ zba_err_t zba_camera_set_res(zba_resolution_t res)
   return ZBA_OK;
 }
 
+zba_err_t zba_camera_set_autoexposure(bool on)
+{
+  // Bail if camera not initialized
+  zba_err_t result = ZBA_MODULE_INITIALIZED(zba_camera);
+  if (result != ZBA_OK)
+  {
+    return result;
+  }
+
+  camera_state.camera_sensor->set_gain_ctrl(camera_state.camera_sensor, on ? 1 : 0);
+  camera_state.camera_sensor->set_exposure_ctrl(camera_state.camera_sensor, on ? 1 : 0);
+}
+
 zba_resolution_t zba_camera_get_res()
 {
   return camera_state.resolution;

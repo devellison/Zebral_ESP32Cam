@@ -52,6 +52,9 @@ static const command_entry_t command_handlers[] =
   {"dir",      zba_commands_dir,           NULL,  "dir",                "Displays files on SD card"},
   {"cam",      zba_commands_camera_status, NULL,  "cam",                "Get camera status"},
   {"res",      zba_commands_camera_res,    NULL,  "res",                "Set camera res (VGA,SVGA,HD,SXGA,UXGA)"},
+  {"ledcolor", zba_commands_ledcolor,      NULL,  "ledcolor #000000",   "Sets all LEDs to color"},
+  {"gpio",     zba_commands_gpio,          NULL,  "gpio## [on|off]",    "Turns on/off gpio bits"},
+  {"autoexpose", zba_commands_autoexpose,  NULL,  "autoexpose [on|off]","Turns on/off autoexposure"},
   // Special commands handled differently for web
   {"status",   zba_commands_status,        
                zba_commands_status_web,           "status",             "Gets the status of subsystems"}
@@ -272,13 +275,16 @@ void zba_commands_status(const char *arg, zba_cmd_stream_t *cmd_stream)
 
   if (ZBA_MODULE_INITIALIZED(zba_wifi) == ZBA_OK)
   {
-    ZBA_CMD_LOG("Wifi: %s", zba_wifi_get_ip_addr());
+    ZBA_CMD_LOG("ip: %s", zba_wifi_get_ip_addr());
   }
 
   if (ZBA_MODULE_INITIALIZED(zba_camera) == ZBA_OK)
   {
-    ZBA_CMD_LOG("Camera: %s", zba_camera_get_res_name(zba_camera_get_res()));
+    ZBA_CMD_LOG("resolution: %s", zba_camera_get_res_name(zba_camera_get_res()));
   }
+
+  ZBA_CMD_LOG("gpio: %04X",
+              ((uint16_t)zba_i2c_aw9523_get_out_high() << 8) + zba_i2c_aw9523_get_out_low());
 
   // We don't init/deinit it from here because it would kill the session, so
   // right now it's not in the subsystem list.
@@ -293,15 +299,33 @@ void zba_commands_status(const char *arg, zba_cmd_stream_t *cmd_stream)
 
 void zba_commands_status_web(const char *arg, httpd_req_t *req)
 {
+#define MAX_STAT_SIZE 1024
+  int i;
+  char buffer[MAX_STAT_SIZE + 1] = {0};
   (void)arg;
-  char buffer[256] = {0};
 
   // {TODO} Add more, but this is the one I want right now.
   // LED Strip state? Do we want to transfer that? Probably at least config....
   // Also module status like the normal status does.
-  snprintf(buffer, 255, "{\"resolution\":\"%s\", \"gpio\":\"0x%04X\"}",
+  snprintf(buffer, MAX_STAT_SIZE, "{\"resolution\":\"%s\", \"gpio\":\"0x%04X\"",
            zba_camera_get_res_name(zba_camera_get_res()),
            ((uint16_t)zba_i2c_aw9523_get_out_high() << 8) + zba_i2c_aw9523_get_out_low());
+
+  // Subsystem status
+  snprintf(buffer + strlen(buffer), MAX_STAT_SIZE - strlen(buffer), ",\"util\": \"0x%X\"",
+           ZBA_MODULE_INITIALIZED(zba_util));
+  snprintf(buffer + strlen(buffer), MAX_STAT_SIZE - strlen(buffer), ",\"stream\": \"0x%X\"",
+           ZBA_MODULE_INITIALIZED(zba_stream));
+
+  for (i = 0; i < num_subsystems; ++i)
+  {
+    snprintf(buffer + strlen(buffer), MAX_STAT_SIZE - strlen(buffer), ",\"%s\": \"0x%X\"",
+             zba_subsystems[i].name, *zba_subsystems[i].init_error);
+  }
+  strncat(buffer, "}", MAX_STAT_SIZE);
+
+  // Go ahead and dump status to our logs when this is called.
+  zba_commands_status(arg, NULL);
 
   httpd_resp_set_type(req, "text/html");
   httpd_resp_set_hdr(req, "Content-Encoding", "utf-8");
@@ -345,7 +369,7 @@ void zba_commands_reset(const char *arg, zba_cmd_stream_t *cmd_stream)
 
 void zba_commands_set_device_pwd(const char *arg, zba_cmd_stream_t *cmd_stream)
 {
-  if (*arg != ' ')
+  if ((*arg != ' ') && (*arg != '='))
   {
     ZBA_CMD_LOG("Command requires an argument.");
     return;
@@ -368,7 +392,7 @@ void zba_commands_set_device_pwd(const char *arg, zba_cmd_stream_t *cmd_stream)
 
 void zba_commands_set_ssid(const char *arg, zba_cmd_stream_t *cmd_stream)
 {
-  if (*arg != ' ')
+  if ((*arg != ' ') && (*arg != '='))
   {
     ZBA_CMD_LOG("Command requires an argument.");
     return;
@@ -389,7 +413,7 @@ void zba_commands_set_ssid(const char *arg, zba_cmd_stream_t *cmd_stream)
 
 void zba_commands_set_wifi_pwd(const char *arg, zba_cmd_stream_t *cmd_stream)
 {
-  if (*arg != ' ')
+  if ((*arg != ' ') && (*arg != '='))
   {
     ZBA_CMD_LOG("Command requires an argument.");
     return;
@@ -413,7 +437,7 @@ void zba_commands_start(const char *arg, zba_cmd_stream_t *cmd_stream)
   zba_err_t result;
   int i;
 
-  if (*arg != ' ')
+  if ((*arg != ' ') && (*arg != '='))
   {
     ZBA_CMD_LOG("Command requires an argument.");
     return;
@@ -442,7 +466,7 @@ void zba_commands_stop(const char *arg, zba_cmd_stream_t *cmd_stream)
   zba_err_t result;
   int i;
 
-  if (*arg != ' ')
+  if ((*arg != ' ') && (*arg != '='))
   {
     ZBA_CMD_LOG("Command requires an argument.");
     return;
@@ -493,14 +517,79 @@ bool arg_means_on(const char *arg)
 
 void zba_commands_light(const char *arg, zba_cmd_stream_t *cmd_stream)
 {
-  if (*arg != ' ')
+  if ((*arg != ' ') && (*arg != '='))
+  {
+    ZBA_CMD_LOG("Command requires an argument.");
+    return;
+  }
+  arg++;
+  zba_led_light(arg_means_on(arg));
+}
+
+void zba_commands_autoexpose(const char *arg, zba_cmd_stream_t *cmd_stream)
+{
+  if ((*arg != ' ') && (*arg != '='))
+  {
+    ZBA_CMD_LOG("Command requires an argument.");
+    return;
+  }
+  arg++;
+  zba_camera_set_autoexposure(arg_means_on(arg));
+}
+
+void zba_commands_ledcolor(const char *arg, zba_cmd_stream_t *cmd_stream)
+{
+  uint8_t colors[4] = {0};
+  bool gotValue     = false;
+
+  int i = 0;
+
+  if ((*arg != ' ') && (*arg != '='))
   {
     ZBA_CMD_LOG("Command requires an argument.");
     return;
   }
   arg++;
 
-  zba_led_light(arg_means_on(arg));
+  if (*arg == '#')
+  {
+    gotValue = true;
+    arg++;
+  }
+
+  if (!gotValue)
+  {
+    if ((arg[0] == '%') && (arg[1] == '2') && (arg[2] == '3'))
+    {
+      gotValue = true;
+      arg += 3;
+    }
+    else
+    {
+      ZBA_CMD_LOG("invalid led color. Should be in format #rrggbb or #rrggbbww");
+      return;
+    }
+  }
+
+  while ((*arg != 0) && (i < 4))
+  {
+    colors[i] = zba_hex_to_byte(arg);
+    ++i;
+    arg += 2;
+  }
+  ZBA_CMD_LOG("Colors: %02X %02X %02X %02X", colors[0], colors[1], colors[2], colors[3]);
+
+  // {HACK} Right now, we're externally using a javascript color picker that gives us
+  // RGB.  If the length is 3 (RGB) and not 4 (RGBW) for the command, and r=g=b, then let's use
+  // white instead and set RGB to 0.
+  if ((i == 3) && (colors[0] == colors[1]) && (colors[0] == colors[2]))
+  {
+    colors[3] = colors[0];
+    colors[0] = colors[1] = colors[2] = 0;
+  }
+
+  zba_led_strip_set_led(0, -1, colors[0], colors[1], colors[2], colors[3]);
+  zba_led_strip_flip();
 }
 
 void zba_commands_dir(const char *arg, zba_cmd_stream_t *cmd_stream)
@@ -515,6 +604,39 @@ void zba_commands_camera_status(const char *arg, zba_cmd_stream_t *cmd_stream)
   (void)arg;
   (void)cmd_stream;
   zba_camera_dump_status();
+}
+
+void zba_commands_gpio(const char *arg, zba_cmd_stream_t *cmd_stream)
+{
+  int pin     = 0;
+  bool pin_on = false;
+
+  if ((*arg >= '0') && (*arg <= '9'))
+  {
+    pin = (*arg) - '0';
+    arg++;
+    if ((*arg >= '0') && (*arg <= '9'))
+    {
+      pin = (pin * 10) + (*arg) - '0';
+      arg++;
+    }
+  }
+  else
+  {
+    ZBA_CMD_LOG("GPIO command needs pin as part of the command. e.g. gpio12=on");
+    return;
+  }
+
+  if ((*arg != ' ') && (*arg != '='))
+  {
+    ZBA_CMD_LOG("Command requires an argument.");
+    return;
+  }
+  arg++;
+
+  pin_on = arg_means_on(arg);
+
+  zba_i2c_aw9523_set_pin(pin, pin_on);
 }
 
 void zba_commands_camera_res(const char *arg, zba_cmd_stream_t *cmd_stream)

@@ -80,6 +80,10 @@ extern "C"
     return ZBA_MIN_FLOAT(ZBA_MIN_FLOAT(a, b), c);
   }
 
+  uint8_t zba_hex_to_byte(const char* asciiHex);
+
+  uint8_t zba_char_to_nibble(char ascii);
+
   /// Log flags
   typedef enum zba_log_flags
   {

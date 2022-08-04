@@ -41,7 +41,7 @@
       color: white;
       overflow-x: hidden;
       transition: .25s;
-      font-size: 24px;
+      font-size: 14px;
       cursor: pointer;
     }
 
@@ -68,23 +68,27 @@
     }
 
     #sidebar_ctrls {
-      text-align: center;
+      text-align: left;
+      margin-left: 8px
+    }
 
+    .centered {
+      text-align: center;
     }
 
     button {
-      font-size: 24px;
+      font-size: 18px;
       background-color: rgb(80, 60, 120);
       color: white;
       cursor: pointer;
-      border-radius: 24px;
+      border-radius: 20px;
       transition-duration: .25s;
-      padding: 16px 24px;
+      padding: 12px 20px;
       margin: 8px 8px;
     }
 
     select {
-      font-size: 24px;
+      font-size: 18px;
       background-color: rgb(80, 60, 120);
       color: white;
       margin: 8px 8px;
@@ -122,10 +126,13 @@
   <div id="sidebar_div">
     <div id="logo_div"><img id="logo" src="zebral_logo.svg" width="50" onclick="toggleNav()" /></div>
     <div id="sidebar_ctrls">
-      <div><a href="image" download><button id="save_btn" class="sidebar_btn">Save Image</button></a></div>
-      <div><a href="https://github.com/devellison/zebral_esp32cam"><button id="github_btn"
+      <div class="centered"><a href="image" download><button id="save_btn" class="sidebar_btn">Save Image</button></a>
+      </div>
+      <div class="centered"><a href="https://github.com/devellison/zebral_esp32cam"><button id="github_btn"
             class="sidebar_btn">GitHub</button></a></div>
-
+      <div>
+        <hr>
+      </div>
       <div>Resolution</div>
       <div>
         <select id="resolution" onChange="on_change_resolution();" class="sidebar_combo" name="resolution">
@@ -137,8 +144,39 @@
           <option value="UXGA">UXGA</option>
         </select>
       </div>
+      <div>
+        <label for="autoexpose">AutoExpose</label>
+        <input type="checkbox" id="autoexpose" onChange="on_change_autoexpose();">
+      </div>
+      <div>
+        <label for="exposure">Exposure</label>
+        <input type="range" id="exposure" onChange="on_change_exposure();">
+      </div>
+      <div>
+        <label for="color">LED Color</label>
+        <input type="color" id="ledcolor" onChange="on_change_leds();">
+      </div>
+      <div>
+        <label for="pin0">Pin 0</label>
+        <input type="checkbox" id="pin0" onChange="on_change_gpio(0);">
+      </div>
+      <div>
+        <label for="pin8">Pin 8</label>
+        <input type="checkbox" id="pin8" onChange="on_change_gpio(8);">
+      </div>
+      <div>
+        <label for="pin9">Pin 9</label>
+        <input type="checkbox" id="pin9" onChange="on_change_gpio(9);">
+      </div>
+      <div>
+        <label for="pin10">Pin 10</label>
+        <input type="checkbox" id="pin10" onChange="on_change_gpio(10);">
+      </div>
+      <div>
+        <label for="pin11">Pin 11</label>
+        <input type="checkbox" id="pin11" onChange="on_change_gpio(11);">
+      </div>
     </div>
-
   </div>
   <!-- Camera image -->
   <div id="camera_div">
@@ -182,24 +220,50 @@
     }
 
     async function get_resolution() {
+      if (hostname == "") return;
       let response = await fetch("http://" + hostname + "/command?status");
       let data = await response.json();
       document.getElementById("resolution").value = data.resolution;
+    }
+    function on_change_autoexpose() {
+      var value = document.getElementById("autoexpose").checked;
+      document.getElementById("exposure").disabled = value;
+      console.log("Change autoexpose to ", value);
+      on_change_exposure();
+    }
+
+    function on_change_exposure() { }
+
+    function on_change_leds() {
+      var value = encodeURIComponent(document.getElementById("ledcolor").value);
+
+      console.log("Change leds to ", value);
+      var uri = "http://" + hostname + "/command?ledcolor=" + value;
+      console.log("Uri is ", uri);
+      if (hostname == "") return;
+      fetch(uri, { credentials: 'include' });
+    }
+
+    function on_change_gpio(pin) {
+      var value = document.getElementById("pin" + pin).checked;
+      var uri = "http://" + hostname + "/command?gpio" + pin + "=" + value;
+      console.log("Changing GPIO pin. URI: ", uri);
+      if (hostname == "") return;
+      fetch(uri, { credentials: 'include' });
     }
 
     function on_change_resolution() {
       var select = document.getElementById("resolution");
       if (select.selectedIndex >= 0) {
         var value = select.options[select.selectedIndex].value;
+        console.log("Change resolution to ", value);
+        if (hostname == "") return;
         fetch("http://" + hostname + "/command?res=" + value, {
           credentials: 'include'
         });
       }
     }
 
-    function on_change_led() {
-
-    }
 
   </script>
 </body>

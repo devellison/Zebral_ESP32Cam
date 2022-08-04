@@ -42,6 +42,7 @@ extern "C"
   zba_resolution_t zba_camera_get_res();
   size_t zba_camera_get_height();
   size_t zba_camera_get_width();
+  zba_err_t zba_camera_set_autoexposure(bool on);
 
   /// Resolution as defined above
   zba_err_t zba_camera_init();
